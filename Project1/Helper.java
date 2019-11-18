@@ -93,7 +93,7 @@ public class Helper {
         //increment k when found an r that works
         while(currentRowIndex < rLength){
             r = floor(squareRoot(n.multiply(BigInteger.valueOf(k)))) + j;
-            pFactors = primeFactors(r);
+            pFactors = primeFactors((r.pow(2)).mod(n));
 
             
             //case 1: not B-smooth, increment j
