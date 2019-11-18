@@ -1,6 +1,8 @@
 import java.math.* ;
 import java.io.* ;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 
 public class Helper {
@@ -40,7 +42,7 @@ public class Helper {
         return left;
     }
     
-    public static ArrayList<Integer> primeFactors(BigInteger x){
+    private static ArrayList<Integer> primeFactors(BigInteger x){
         ArrayList<Integer> primeFactors = new ArrayList<Integer>();
         for(BigInteger i=BigInteger.valueOf(2); i.compareTo(x) == -1; i++){
             while(x.mod(i)==0){
@@ -52,44 +54,103 @@ public class Helper {
         return primeFactors;
     }
 
-    public int[] toBinary(int[] row){
+    private static LinkedHashMap<Integer,Integer> primeMap(ArrayList<Integer> primeFactors){
+        LinkedHashMap<Integer,Integer> primeMap = new LinkedHashMap<Integer,Integer>();
+        for(int i=0; i<primeFactors.size(); i++){
+            int count = primeMap.containsKey(primeFactors.get(i)) ? primeMap.get(word) : 0;
+            primeMap.put(word, count + 1);
+        }
+        return primeMap;
+    }
+
+    private static int[] toBinary(int[] row){
         for (int i = 0; i<fLength;i++) {
             row[i] = row[i]%2;
         }
         return row;
     }
 
+    private static boolean arrayEqual(int[] x, int[] y){
+        for (int i = 0; i < fLength; i++) 
+            if (x[i] != y[i]) 
+                return false;  
+        return true; 
+    }
+
     public static factor(BigInteger n) {
         //matrix holds values of exponents
         //gaussian elimination then converts matrix to binary
         int[][] matrix = new int[rLength][fLength];
-        int[] temp = new int[fLength];
-        int currentRow = 0;
+        int[] tempRow = new int[fLength];
+        int[] tempRowBinary = new int[fLength];
+        int currentRowIndex = 0;
         int j,k = 1;
         BigInteger r;
         ArrayList<Integer> pFactors = new ArrayList<Integer>();
+        LinkedHashMap<Integer,Integer> pMap = new LinkedHashMap<Integer,Integer>();
 
         //increment j when want to test a new r, until == sqrt(n), then reset j and increment k
         //increment k when found an r that works
-        while(currentRow < rLength){
+        while(currentRowIndex < rLength){
             r = floor(squareRoot(n.multiply(BigInteger.valueOf(k)))) + j;
             pFactors = primeFactors(r);
+
             
             //case 1: not B-smooth, increment j
             if(pFactors.get(pFactors.size()-1) > factorBase[-1]){
-                if(BigInteger.valueOf(j).compareTo(n) == -1){
+                if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
                     j++;
                 }
                 else{
                     k++;
                     j = 1;
                 }
+                pMap.clear();
+                pFactors.clear();
                 continue;
             }
+            
+            //create map of prime factors to exponents
+            pMap = primeMap(pFactors);
+
+            //create new row in matrix
+            for(int i=0; i<fLength;i++){
+               if(pMap.containsKey(factorBase[i])){
+                   tempRow[i] = pMap.get(factorBase[i]);
+               }else{
+                   tempRow[i] = 0;
+               }
+            }
+
             //case 2: not a unique binary row in matrix, increment j
             //must test the binary row (using toBinary) against all other binary rows in matrix
-
+            if(currentRowIndex != 0){
+                tempRowBinary = toBinary(tempRow);
+                for(int i = 0; i<currentRowIndex; i++){
+                    //if equal, clear everything and break to get to next iteration of while loop
+                    if(arrayEqual(tempRowBinary, toBinary(matrix[i]))){
+                        if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
+                            j++;
+                        }
+                        else{
+                            k++;
+                            j = 1;
+                        }
+                        pMap.clear();
+                        pFactors.clear();
+                        break;
+                    }
+                }
+            }
+            
             //case 3: valid row, add to matrix, increment k and currentRow
+            for(int i=0;i<fLength;i++){
+                matrix[currentRowIndex][i] = tempRow[i];
+            }
+            k++;
+            currentRowIndex++;
+            pMap.clear();
+            pFactors.clear();
         }
 
     }
