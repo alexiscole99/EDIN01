@@ -233,7 +233,7 @@ public class Helper {
         int n = fLength ;
         String firstLine = "" + m + " " + n ;
         String matrix = firstLine + "\n";
-        for (int i = 0; i < m; i++) {
+        /*for (int i = 0; i < m; i++) {
             matrix = matrix + "" + exponents[i][0] ;
             for (int j = 1; j < n; j++) {
                 matrix = matrix + " " + exponents[i][j] ;
@@ -242,8 +242,21 @@ public class Helper {
         }
         FileWriter fileWriter = new FileWriter("gauss.in") ;
         fileWriter.write(matrix) ;
-        fileWriter.close() ;
-        
+        fileWriter.close() ;*/
+        FileWriter fw = new FileWriter("gauss.in",true);
+        PrintWriter pw = new PrintWriter(fw);
+        pw.println(matrix);
+        for(int i = 0; i<m; i++){
+            matrix = "" + exponents[i][0];
+            for(int j = 1; j<n; j++){
+                matrix = matrix + " " + exponents[i][j];
+            }
+            matrix = matrix + "\n" ;
+            pw.println(matrix);
+        }
+        pw.close();
+
+
         // Run GaussBin.exe to get the binary matrix
         try {
             ProcessBuilder builder = new ProcessBuilder("GaussBin.exe", "gauss.in", "gauss.out") ;
