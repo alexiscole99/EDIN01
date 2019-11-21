@@ -5,11 +5,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 public class Helper {
-    private static int fLength = 1024 ;
+    private static int fLength = 500 ;
     private static int[] factorBase = generateFactorBase(fLength);
     private static int smoothness = factorBase[fLength-1] + 1 ;
     private static int rLength = fLength + 10;
-    private static int[] rValues = new int[rLength] ;
+    private static BigInteger[] rValues = new BigInteger[rLength] ;
 
     private static int[] generateFactorBase(int size) {
         int n = 0, i, j, k;
@@ -47,17 +47,19 @@ public class Helper {
         for(BigInteger i=BigInteger.valueOf(2); i.compareTo(x) == -1; i = i.add(BigInteger.ONE)){
             while(x.mod(i).equals(BigInteger.ZERO)){
                 primeFactors.add(i.intValue());
+                x = x.divide(i) ;
             }
         }if(x.intValue()>2){
             primeFactors.add(x.intValue());
         }
         return primeFactors;
     }
+    
 
     private static LinkedHashMap<Integer,Integer> primeMap(ArrayList<Integer> primeFactors){
         LinkedHashMap<Integer,Integer> primeMap = new LinkedHashMap<Integer,Integer>();
         for(int i=0; i<primeFactors.size(); i++){
-            int count = primeMap.containsKey(primeFactors.get(i)) ? primeMap.get(i) : 0;
+            int count = primeMap.containsKey(primeFactors.get(i)) ? primeMap.get(primeFactors.get(i)) : 0;
             primeMap.put(primeFactors.get(i), count + 1);
         }
         return primeMap;
@@ -71,14 +73,15 @@ public class Helper {
     }
 
     private static boolean arrayEqual(int[] x, int[] y){
-        for (int i = 0; i < fLength; i++) 
+        for (int i = 0; i < fLength; i++) {
             if (x[i] != y[i]) 
                 return false;  
+        }
         return true; 
     }
     
     // Call this function from main() with BigInteger as a string
-    public static int[][] factorFromString throws IOException (String n) {
+    public static BigInteger factorFromString (String n) throws IOException {
         BigInteger x = new BigInteger(n) ;
         int[][] exponents = getExponents(x) ;
         int[][] possibles = eliminate(exponents) ;
@@ -87,27 +90,51 @@ public class Helper {
             BigInteger combinedR = BigInteger.ONE ;
             int[] combined_exp = new int[fLength] ;
             for (int j = 0; j < rLength; j++) {
-                if (possibles[i][j]) {
-                    combinedR = combinedR.multiply(BigInteger.valueOf(rValues[j])) ;
+                if (possibles[i][j] == 1) {
+                    combinedR = combinedR.multiply(rValues[j]) ;
                     for (int k = 0; k < fLength; k++) {
-                        combined_exp[k] = exponents[k][j] ;
+                        combined_exp[k] = exponents[j][k] ;
                     }
                 }
             }
             
             BigInteger combinedFactors = BigInteger.ONE;
             for (int j = 0; j < fLength; j++) {
-                combinedFactors = combinedFactors.multiply(BigInteger.valueOf(factorBase[j]).pow(combined_exp[j])) ;
+                combinedFactors = combinedFactors.multiply(BigInteger.valueOf(factorBase[j]).pow(combined_exp[j]/2)) ;
             }
             
             // test(int r, int factors) is not yet implemented
             // Should just do the gcd of the two numbers
-            int result = test(combinedR, combinedFactors) ;
-            if (result != 1) {
+            BigInteger result = test(combinedR, combinedFactors, x) ;
+            if (!result.equals(BigInteger.ONE)) {
                 return result ;
             }
         }
+        return BigInteger.ONE ;
     }
+    
+    public static BigInteger getOtherFactor (String n, BigInteger factor) {
+        BigInteger x = new BigInteger(n) ;
+        return x.divide(factor) ;
+        
+    }
+    
+    private static BigInteger test (BigInteger r, BigInteger factors, BigInteger n) {
+        return gcd (factors.subtract(r), n) ;
+    }
+    
+    private static BigInteger gcd (BigInteger a, BigInteger b) {
+        ArrayList<BigInteger> r = new ArrayList<BigInteger>() ;
+        r.add(0, a) ;
+        r.add(1, b) ;
+        int i = 1 ;
+        while (!r.get(i).equals(BigInteger.ZERO)) {
+            r.add(r.get(i-1).mod(r.get(i))) ;
+            i++ ;
+        }
+        return r.get(i-1) ;
+    }
+        
 
     private static int[][] getExponents(BigInteger n) {
         //matrix holds values of exponents
@@ -126,10 +153,22 @@ public class Helper {
         while(currentRowIndex < rLength){
             r = squareRoot(n.multiply(BigInteger.valueOf(k))).add(BigInteger.valueOf(j));
             pFactors = primeFactors((r.pow(2)).mod(n));
+            if(pFactors.size() == 0) {
+                if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
+                    j++;
+                }
+                else{
+                    k++;
+                    j = 1;
+                }
+                pMap.clear();
+                pFactors.clear();
+                continue;
+            }
 
             
             //case 1: not B-smooth, increment j
-            if(pFactors.get(pFactors.size()-1) > factorBase[-1]){
+            if(pFactors.get(pFactors.size()-1) > factorBase[fLength-1]){
                 if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
                     j++;
                 }
@@ -190,8 +229,8 @@ public class Helper {
     
     private static int[][] eliminate(int[][] exponents) throws IOException {
         // Write matrix to file
-        int m = 12 ;
-        int n = 10 ;
+        int m = rLength ;
+        int n = fLength ;
         String firstLine = "" + m + " " + n ;
         String matrix = firstLine + "\n";
         for (int i = 0; i < m; i++) {
@@ -201,20 +240,26 @@ public class Helper {
             }
             matrix = matrix + "\n" ;
         }
-        String test = "test" ;
         FileWriter fileWriter = new FileWriter("gauss.in") ;
         fileWriter.write(matrix) ;
         fileWriter.close() ;
         
         // Run GaussBin.exe to get the binary matrix
-        Process gaussBin = new ProcessBuilder("GaussBin.exe", "gauss.in", "gauss.out").start() ;
+        try {
+            ProcessBuilder builder = new ProcessBuilder("GaussBin.exe", "gauss.in", "gauss.out") ;
+            builder.redirectErrorStream(true) ;
+            Process gaussBin = builder.start() ;
+            gaussBin.waitFor() ;
+        }
+        catch (InterruptedException e) { }
         
         // Output matrix from gauss.out
         BufferedReader reader = new BufferedReader(new FileReader("gauss.out")) ;
         m = Integer.parseInt(reader.readLine()) ; // get number of rows for output
+        n = rLength ;
         int[][] result = new int[m][n] ;
-        String line = reader.readLine() ;
         for (int i = 0; i < m; i++) {
+            String line = reader.readLine() ;
             String[] temp = line.split(" ") ;
             for (int j = 0; j < n; j++) {
                 result[i][j] = Integer.parseInt(temp[j]) ;
