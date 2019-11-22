@@ -5,11 +5,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 public class Helper {
-    private static int fLength = 500 ;
+    private static int fLength = 5000 ;
     private static int[] factorBase = generateFactorBase(fLength);
     private static int smoothness = factorBase[fLength-1] + 1 ;
-    private static int rLength = fLength + 10;
+    private static int rLength = fLength+100;
     private static BigInteger[] rValues = new BigInteger[rLength] ;
+    private static int rPart1 = 1 ;
+    private static int rPart2 = 1 ;
 
     private static int[] generateFactorBase(int size) {
         int n = 0, i, j, k;
@@ -42,20 +44,21 @@ public class Helper {
         return left;
     }
     
-    private static ArrayList<Integer> primeFactors(BigInteger x){
-        ArrayList<Integer> primeFactors = new ArrayList<Integer>();
-        for(BigInteger i=BigInteger.valueOf(2); i.compareTo(x) == -1; i = i.add(BigInteger.ONE)){
-            while(x.mod(i).equals(BigInteger.ZERO)){
-                primeFactors.add(i.intValue());
-                x = x.divide(i) ;
+    private static int[] primeFactors(BigInteger x){
+        int[] primeFactors = new int[fLength];
+        for(int i = 0; i < fLength; i++){
+            while(x.mod(BigInteger.valueOf(factorBase[i])).equals(BigInteger.ZERO)){
+                primeFactors[i] = factorBase[i];
+                x = x.divide(BigInteger.valueOf(factorBase[i])) ;
             }
-        }if(x.intValue()>2){
-            primeFactors.add(x.intValue());
+        }
+        if (!x.equals(BigInteger.ONE)) {
+            primeFactors[0] = -1 ;
         }
         return primeFactors;
     }
     
-
+/*
     private static LinkedHashMap<Integer,Integer> primeMap(ArrayList<Integer> primeFactors){
         LinkedHashMap<Integer,Integer> primeMap = new LinkedHashMap<Integer,Integer>();
         for(int i=0; i<primeFactors.size(); i++){
@@ -64,7 +67,7 @@ public class Helper {
         }
         return primeMap;
     }
-
+*/
     private static int[] toBinary(int[] row){
         for (int i = 0; i<fLength;i++) {
             row[i] = row[i]%2;
@@ -110,7 +113,8 @@ public class Helper {
                 return result ;
             }
         }
-        return BigInteger.ONE ;
+        System.out.println("Check " + rPart1 + " " + rPart2) ;
+        return factorFromString(n) ;
     }
     
     public static BigInteger getOtherFactor (String n, BigInteger factor) {
@@ -143,74 +147,46 @@ public class Helper {
         int[] tempRow = new int[fLength];
         int[] tempRowBinary = new int[fLength];
         int currentRowIndex = 0;
-        int j = 1,k = 1;
         BigInteger r;
-        ArrayList<Integer> pFactors = new ArrayList<Integer>();
+        int[] pFactors = new int[fLength];
         LinkedHashMap<Integer,Integer> pMap = new LinkedHashMap<Integer,Integer>();
 
         //increment j when want to test a new r, until == sqrt(n), then reset j and increment k
         //increment k when found an r that works
         while(currentRowIndex < rLength){
-            r = squareRoot(n.multiply(BigInteger.valueOf(k))).add(BigInteger.valueOf(j));
+            if (rPart2 > rPart1) {
+                rPart2 = 1 ;
+                rPart1++ ;
+            }
+            r = squareRoot(n.multiply(BigInteger.valueOf(rPart2))).add(BigInteger.valueOf(rPart1));
             pFactors = primeFactors((r.pow(2)).mod(n));
-            if(pFactors.size() == 0) {
-                if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
-                    j++;
-                }
-                else{
-                    k++;
-                    j = 1;
-                }
-                pMap.clear();
-                pFactors.clear();
-                continue;
-            }
-
             
-            //case 1: not B-smooth, increment j
-            if(pFactors.get(pFactors.size()-1) > factorBase[fLength-1]){
-                if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
-                    j++;
-                }
-                else{
-                    k++;
-                    j = 1;
-                }
-                pMap.clear();
-                pFactors.clear();
-                continue;
+            //case 1: not B-smooth, increment k
+            if(pFactors[0] == -1){
+                rPart2++ ;
+                continue ;
             }
             
-            //create map of prime factors to exponents
-            pMap = primeMap(pFactors);
-
             //create new row in matrix
             for(int i=0; i<fLength;i++){
-               if(pMap.containsKey(factorBase[i])){
-                   tempRow[i] = pMap.get(factorBase[i]);
-               }else{
-                   tempRow[i] = 0;
-               }
+                tempRow[i] = pFactors[i];
             }
-
-            //case 2: not a unique binary row in matrix, increment j
+            
+            //case 2: not a unique binary row in matrix, increment k
             //must test the binary row (using toBinary) against all other binary rows in matrix
             if(currentRowIndex != 0){
                 tempRowBinary = toBinary(tempRow);
+                boolean equalArray = false ;
                 for(int i = 0; i<currentRowIndex; i++){
                     //if equal, clear everything and break to get to next iteration of while loop
                     if(arrayEqual(tempRowBinary, toBinary(matrix[i]))){
-                        if(BigInteger.valueOf(j).compareTo(squareRoot(n)) == -1){
-                            j++;
-                        }
-                        else{
-                            k++;
-                            j = 1;
-                        }
-                        pMap.clear();
-                        pFactors.clear();
+                        rPart2++ ;
+                        equalArray = true ;
                         break;
                     }
+                }
+                if(equalArray) {
+                    continue ;
                 }
             }
             
@@ -219,10 +195,8 @@ public class Helper {
                 matrix[currentRowIndex][i] = tempRow[i];
             }
             rValues[currentRowIndex] = r ;
-            k++;
+            rPart2++;
             currentRowIndex++;
-            pMap.clear();
-            pFactors.clear();
         }
         return matrix ;
     }
@@ -233,13 +207,14 @@ public class Helper {
         int n = fLength ;
         String firstLine = "" + m + " " + n ;
         String matrix = firstLine + "\n";
-        /*for (int i = 0; i < m; i++) {
+/*        for (int i = 0; i < m; i++) {
             matrix = matrix + "" + exponents[i][0] ;
             for (int j = 1; j < n; j++) {
                 matrix = matrix + " " + exponents[i][j] ;
             }
             matrix = matrix + "\n" ;
         }
+        System.out.println("Checkpoint") ;
         FileWriter fileWriter = new FileWriter("gauss.in") ;
         fileWriter.write(matrix) ;
         fileWriter.close() ;*/
@@ -255,7 +230,6 @@ public class Helper {
             pw.println(matrix);
         }
         pw.close();
-
 
         // Run GaussBin.exe to get the binary matrix
         try {
@@ -279,6 +253,10 @@ public class Helper {
             }
         }
         reader.close() ;
+        File file1 = new File("gauss.in") ;
+        File file2 = new File("gauss.out") ;
+        file1.delete() ;
+        file2.delete() ;
         return result ;
     }
     
