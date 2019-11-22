@@ -5,10 +5,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 public class Helper {
-    private static int fLength = 5000 ;
+    private static int fLength = 8192 ;
     private static int[] factorBase = generateFactorBase(fLength);
     private static int smoothness = factorBase[fLength-1] + 1 ;
-    private static int rLength = fLength+100;
+    private static int rLength = fLength+10;
     private static BigInteger[] rValues = new BigInteger[rLength] ;
     private static int rPart1 = 1 ;
     private static int rPart2 = 1 ;
