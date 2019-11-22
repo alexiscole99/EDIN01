@@ -5,14 +5,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 public class Helper {
-    private static int fLength = 5000 ;
-    private static int[] factorBase = generateFactorBase(fLength);
-    private static int smoothness = factorBase[fLength-1] + 1 ;
-    private static int rLength = fLength+100;
+    private static int fLength = 1024;
+    private static int[] factorBase = generateFactorBase(fLength) ;
+    private static int smoothness = factorBase[fLength-1] + 1;
+    private static int rLength = fLength + fLength/10 ;
     private static BigInteger[] rValues = new BigInteger[rLength] ;
     private static int rPart1 = 1 ;
     private static int rPart2 = 1 ;
-
+    private static int times_looped = 0 ;
+    
     private static int[] generateFactorBase(int size) {
         int n = 0, i, j, k;
         int[] primes = new int[size];
@@ -48,7 +49,7 @@ public class Helper {
         int[] primeFactors = new int[fLength];
         for(int i = 0; i < fLength; i++){
             while(x.mod(BigInteger.valueOf(factorBase[i])).equals(BigInteger.ZERO)){
-                primeFactors[i] = factorBase[i];
+                primeFactors[i]++;
                 x = x.divide(BigInteger.valueOf(factorBase[i])) ;
             }
         }
@@ -69,10 +70,11 @@ public class Helper {
     }
 */
     private static int[] toBinary(int[] row){
+        int[] newRow = new int[fLength] ;
         for (int i = 0; i<fLength;i++) {
-            row[i] = row[i]%2;
+            newRow[i] = row[i]%2;
         }
-        return row;
+        return newRow;
     }
 
     private static boolean arrayEqual(int[] x, int[] y){
@@ -87,7 +89,7 @@ public class Helper {
     public static BigInteger factorFromString (String n) throws IOException {
         BigInteger x = new BigInteger(n) ;
         int[][] exponents = getExponents(x) ;
-        int[][] possibles = eliminate(exponents) ;
+        int[][] possibles = eliminate() ;
         
         for (int i = 0; i < possibles.length; i++) {
             BigInteger combinedR = BigInteger.ONE ;
@@ -95,9 +97,12 @@ public class Helper {
             for (int j = 0; j < rLength; j++) {
                 if (possibles[i][j] == 1) {
                     combinedR = combinedR.multiply(rValues[j]) ;
+                    //System.out.print(rValues[j]+" ") ;
                     for (int k = 0; k < fLength; k++) {
-                        combined_exp[k] = exponents[j][k] ;
+                        combined_exp[k] = combined_exp[k] + exponents[j][k] ;
+                        //System.out.print(exponents[j][k] + "; ") ;
                     }
+                    //System.out.println() ;
                 }
             }
             
@@ -105,6 +110,8 @@ public class Helper {
             for (int j = 0; j < fLength; j++) {
                 combinedFactors = combinedFactors.multiply(BigInteger.valueOf(factorBase[j]).pow(combined_exp[j]/2)) ;
             }
+            //System.out.println() ;
+            //System.out.println(combinedR.pow(2).mod(x) + " " + combinedFactors.pow(2).mod(x)) ;
             
             // test(int r, int factors) is not yet implemented
             // Should just do the gcd of the two numbers
@@ -113,7 +120,9 @@ public class Helper {
                 return result ;
             }
         }
-        System.out.println("Check " + rPart1 + " " + rPart2) ;
+        exponents = new int[0][0] ;
+        possibles = new int[0][0] ;
+        //System.out.println(times_looped++) ;
         return factorFromString(n) ;
     }
     
@@ -124,6 +133,12 @@ public class Helper {
     }
     
     private static BigInteger test (BigInteger r, BigInteger factors, BigInteger n) {
+        /*System.out.print("Test: ") ;
+        if (!r.pow(2).mod(n).equals(factors.pow(2).mod(n))) {
+            System.out.println("Lies") ;
+        } else {
+            System.out.println() ;
+        }*/
         return gcd (factors.subtract(r), n) ;
     }
     
@@ -140,7 +155,7 @@ public class Helper {
     }
         
 
-    private static int[][] getExponents(BigInteger n) {
+    private static int[][] getExponents(BigInteger n) throws IOException {
         //matrix holds values of exponents
         //gaussian elimination then converts matrix to binary
         int[][] matrix = new int[rLength][fLength];
@@ -149,7 +164,10 @@ public class Helper {
         int currentRowIndex = 0;
         BigInteger r;
         int[] pFactors = new int[fLength];
-        LinkedHashMap<Integer,Integer> pMap = new LinkedHashMap<Integer,Integer>();
+        
+        FileWriter fw = new FileWriter("gauss.in",true);
+        PrintWriter pw = new PrintWriter(fw);
+        pw.println(rLength + " " + fLength);
 
         //increment j when want to test a new r, until == sqrt(n), then reset j and increment k
         //increment k when found an r that works
@@ -174,7 +192,7 @@ public class Helper {
             
             //case 2: not a unique binary row in matrix, increment k
             //must test the binary row (using toBinary) against all other binary rows in matrix
-            if(currentRowIndex != 0){
+            /*if(currentRowIndex != 0){
                 tempRowBinary = toBinary(tempRow);
                 boolean equalArray = false ;
                 for(int i = 0; i<currentRowIndex; i++){
@@ -188,25 +206,26 @@ public class Helper {
                 if(equalArray) {
                     continue ;
                 }
-            }
+            }*/
             
             //case 3: valid row, add to matrix, increment k and currentRow
             for(int i=0;i<fLength;i++){
                 matrix[currentRowIndex][i] = tempRow[i];
+                pw.print(tempRow[i] + " ") ;
             }
+            pw.println() ;
             rValues[currentRowIndex] = r ;
             rPart2++;
             currentRowIndex++;
         }
+        
+        pw.close() ;
         return matrix ;
     }
     
-    private static int[][] eliminate(int[][] exponents) throws IOException {
+    private static int[][] eliminate() throws IOException {
         // Write matrix to file
-        int m = rLength ;
-        int n = fLength ;
-        String firstLine = "" + m + " " + n ;
-        String matrix = firstLine + "\n";
+        
 /*        for (int i = 0; i < m; i++) {
             matrix = matrix + "" + exponents[i][0] ;
             for (int j = 1; j < n; j++) {
@@ -218,18 +237,6 @@ public class Helper {
         FileWriter fileWriter = new FileWriter("gauss.in") ;
         fileWriter.write(matrix) ;
         fileWriter.close() ;*/
-        FileWriter fw = new FileWriter("gauss.in",true);
-        PrintWriter pw = new PrintWriter(fw);
-        pw.println(matrix);
-        for(int i = 0; i<m; i++){
-            matrix = "" + exponents[i][0];
-            for(int j = 1; j<n; j++){
-                matrix = matrix + " " + exponents[i][j];
-            }
-            matrix = matrix + "\n" ;
-            pw.println(matrix);
-        }
-        pw.close();
 
         // Run GaussBin.exe to get the binary matrix
         try {
@@ -242,8 +249,8 @@ public class Helper {
         
         // Output matrix from gauss.out
         BufferedReader reader = new BufferedReader(new FileReader("gauss.out")) ;
-        m = Integer.parseInt(reader.readLine()) ; // get number of rows for output
-        n = rLength ;
+        int m = Integer.parseInt(reader.readLine()) ; // get number of rows for output
+        int n = rLength ;
         int[][] result = new int[m][n] ;
         for (int i = 0; i < m; i++) {
             String line = reader.readLine() ;
@@ -260,7 +267,4 @@ public class Helper {
         return result ;
     }
     
-    public static int[][] eliminateTester(int[][] exponents) throws IOException {
-        return eliminate(exponents) ;
-    }
 }
